@@ -1372,7 +1372,10 @@ gst_omx_video_dec_loop (GstOMXVideoDec * self)
     GstVideoFormat format;
 
     GST_DEBUG_OBJECT (self, "Port settings have changed, updating caps");
-
+	
+	printf("start:%s:%s:%d\n",__func__,__FILE__,__LINE__);
+	printf("Port setting have changed, udpateing caps\n");
+	
     /* Reallocate all buffers */
     if (acq_return == GST_OMX_ACQUIRE_BUFFER_RECONFIGURE
         && gst_omx_port_is_enabled (port)) {
@@ -1963,6 +1966,7 @@ gst_omx_video_dec_set_format (GstVideoDecoder * decoder,
   klass = GST_OMX_VIDEO_DEC_GET_CLASS (decoder);
 
   GST_DEBUG_OBJECT (self, "Setting new caps %" GST_PTR_FORMAT, state->caps);
+  printf("start:%s:%s:%d\n",__func__,__FILE__,__LINE__);
 
   gst_omx_port_get_port_definition (self->dec_in_port, &port_def);
 
@@ -2136,6 +2140,8 @@ gst_omx_video_dec_set_format (GstVideoDecoder * decoder,
   self->downstream_flow_ret = GST_FLOW_OK;
   gst_pad_start_task (GST_VIDEO_DECODER_SRC_PAD (self),
       (GstTaskFunction) gst_omx_video_dec_loop, decoder, NULL);
+
+  printf("end:%s:%s:%d\n",__func__,__FILE__,__LINE__);
 
   return TRUE;
 }

@@ -27,6 +27,14 @@
 #include <gst/gst.h>
 #include <string.h>
 
+#define DEBUG_OMX 1
+#ifdef DEBUG_OMX
+# define print_omx(txt) \
+	do {printf(txt);}while(0)
+#else
+# define print_omx(txt) 
+#endif
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
