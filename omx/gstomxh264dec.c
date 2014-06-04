@@ -60,7 +60,9 @@ gst_omx_h264_dec_class_init (GstOMXH264DecClass * klass)
   videodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_h264_dec_set_format);
 
   videodec_class->cdata.default_sink_template_caps = "video/x-h264, "
-      "alignment=(string)au, "
+      "parsed=(boolean) true, "
+      "alignment=(string) au, "
+      "stream-format=(string) byte-stream, "
       "width=(int) [1,MAX], " "height=(int) [1,MAX]";
 
   gst_element_class_set_static_metadata (element_class,
@@ -94,8 +96,6 @@ gst_omx_h264_dec_set_format (GstOMXVideoDec * dec, GstOMXPort * port,
   gst_omx_port_get_port_definition (port, &port_def);
   port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingAVC;
   ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
-  
-  printf("\e[31m%s:%s:%d\e[0m\n",__func__,__FILE__,__LINE__);
 
   return ret;
 }

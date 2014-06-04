@@ -1633,8 +1633,7 @@ gst_omx_port_allocate_buffers_unlocked (GstOMXPort * port,
   if (n == -1)
     n = port->port_def.nBufferCountActual;
 
-  printf("n=%d nBufferCountActual=%d %s:%d\n", n, port->port_def.nBufferCountActual, __FILE__,__LINE__);
-  g_return_val_if_fail (n <= port->port_def.nBufferCountActual,
+  g_return_val_if_fail (n == port->port_def.nBufferCountActual,
       OMX_ErrorBadParameter);
 
   GST_INFO_OBJECT (comp->parent,
@@ -1655,7 +1654,6 @@ gst_omx_port_allocate_buffers_unlocked (GstOMXPort * port,
     g_ptr_array_add (port->buffers, buf);
 
     if (buffers) {
-		printf("mmz_user_buffer=%p : size = %ld\n", l->data, port->port_def.nBufferSize);
       err =
           OMX_UseBuffer (comp->handle, &buf->omx_buf, port->index, buf,
           port->port_def.nBufferSize, l->data);
@@ -1670,7 +1668,6 @@ gst_omx_port_allocate_buffers_unlocked (GstOMXPort * port,
           OMX_AllocateBuffer (comp->handle, &buf->omx_buf, port->index, buf,
           port->port_def.nBufferSize);
       buf->eglimage = FALSE;
-	  printf("%s:%s:%d\n",__func__,__FILE__,__LINE__);
     }
 
     if (err != OMX_ErrorNone) {
@@ -1806,7 +1803,6 @@ gst_omx_port_deallocate_buffers_unlocked (GstOMXPort * port)
       buf->omx_buf->pAppPrivate = NULL;
       GST_DEBUG_OBJECT (comp->parent, "%s: deallocating buffer %p (%p)",
           comp->name, buf, buf->omx_buf->pBuffer);
-	  printf("%s:%s:%d\n",__func__,__FILE__,__LINE__);
 
       tmp = OMX_FreeBuffer (comp->handle, port->index, buf->omx_buf);
 
@@ -2330,7 +2326,7 @@ typedef GType (*GGetTypeFunction) (void);
 static const GGetTypeFunction types[] = {
   gst_omx_mpeg2_video_dec_get_type, gst_omx_mpeg4_video_dec_get_type,
   gst_omx_h264_dec_get_type, gst_omx_h263_dec_get_type,
-  /*gst_omx_wmv_dec_get_type,*/ gst_omx_mpeg4_video_enc_get_type,
+  gst_omx_wmv_dec_get_type, gst_omx_mpeg4_video_enc_get_type,
   gst_omx_h264_enc_get_type, gst_omx_h263_enc_get_type,
   gst_omx_aac_enc_get_type, gst_omx_mjpeg_dec_get_type
 #ifdef HAVE_VP8
