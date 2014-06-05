@@ -96,6 +96,6 @@ gst_omx_mpeg2_video_dec_set_format (GstOMXVideoDec * dec, GstOMXPort * port,
   gst_omx_port_get_port_definition (port, &port_def);
   port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG2;
   ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
-
+  printf("\e[31m%s:%s:%d\e[0m\n",__func__,__FILE__,__LINE__);
   return ret;
 }
