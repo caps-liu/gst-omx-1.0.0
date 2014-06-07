@@ -647,6 +647,16 @@ buffer_identification_free (BufferIdentification * id)
   g_slice_free (BufferIdentification, id);
 }
 
+typedef struct _GstHisiFrameBufInfo {
+	unsigned char *bufferaddr;
+	guint32 buffer_len;
+	guint32 data_offset;
+	guint32 data_len;
+} GstHisiFrameBufInfo;
+
+static GstHisiFrameBufInfo g_frame_buffer_info[20];
+static int g_frame_buffer_info_index;
+
 /* prototypes */
 static void gst_omx_video_dec_finalize (GObject * object);
 
@@ -728,13 +738,6 @@ _SVR_FORMAT_ParseNalInplace (guchar * pu8Data, guint s32Len)
   return 0;
 }
 
-typedef struct _GstHisiFrameBufInfo {
-	unsigned char *bufferaddr;
-	guint32 buffer_len;
-	guint32 data_offset;
-	guint32 data_len;
-} GstHisiFrameBufInfo;
-
 static void
 gst_omx_video_dec_class_init (GstOMXVideoDecClass * klass)
 {
@@ -772,6 +775,7 @@ gst_omx_video_dec_init (GstOMXVideoDec * self)
 
   g_mutex_init (&self->drain_lock);
   g_cond_init (&self->drain_cond);
+  g_frame_buffer_info_index = 0;
 }
 
 static gboolean
@@ -1071,21 +1075,27 @@ gst_omx_video_dec_fill_buffer (GstOMXVideoDec * self,
   /* Same strides and everything */
   //if (gst_buffer_get_size (outbuf) == inbuf->omx_buf->nFilledLen) 
   {
-	/*GstHisiFrameBufInfo *frame;
+	GstHisiFrameBufInfo *frame;
 	GstMapInfo map = GST_MAP_INFO_INIT;
     gst_buffer_map (outbuf, &map, GST_MAP_WRITE);
-	frame = (GstHisiFrameBufInfo*)map.data;
-
+	frame = (GstHisiFrameBufInfo*)&g_frame_buffer_info[g_frame_buffer_info_index % 20];
+	g_frame_buffer_info_index = (g_frame_buffer_info_index++)%20;
+	
 	frame->bufferaddr = inbuf->omx_buf->pBuffer;
 	frame->data_offset = inbuf->omx_buf->nOffset;
 	frame->data_len = inbuf->omx_buf->nFilledLen;
-	*/
-
+	frame->buffer_len = inbuf->omx_buf->nAllocLen;
+	
     /*memcpy (map.data,
         inbuf->omx_buf->pBuffer + inbuf->omx_buf->nOffset,
         inbuf->omx_buf->nFilledLen);*/
 
-    /*gst_buffer_unmap (outbuf, &map);*/
+    gst_buffer_unmap (outbuf, &map);
+	
+	gst_mini_object_set_qdata(GST_MINI_OBJECT_CAST(outbuf), 
+		g_quark_from_string("omx.buf"),
+		frame, 0);
+ printf("#### set frame1[%p][%p]\n",outbuf,frame);
  
     ret = TRUE;
     goto done;
@@ -1298,9 +1308,9 @@ gst_omx_video_dec_allocate_output_buffers (GstOMXVideoDec * self)
       was_enabled = FALSE;
     }
 
-	printf("set buffer to omx:%s:%d\n",__func__,__LINE__);
+	printf("set buffer to omx:[pool=%p]%s:%d\n",pool,__func__,__LINE__);
 
-	if (pool) {
+	if (FALSE && pool) {
 		GstBuffer *buffer = NULL;	
 		GList *gst_buf_list;
 		GList *gst_mmz_list;
@@ -1631,8 +1641,12 @@ gst_omx_video_dec_loop (GstOMXVideoDec * self)
       }
       buf = NULL;
     } else {
-      outbuf =
-          gst_video_decoder_allocate_output_buffer_ex (GST_VIDEO_DECODER (self), buf->omx_buf->pBuffer);
+      /*outbuf =
+          gst_video_decoder_allocate_output_buffer_ex (GST_VIDEO_DECODER (self), 
+          buf->omx_buf->pBuffer);*/
+	  outbuf =
+          gst_video_decoder_allocate_output_buffer(GST_VIDEO_DECODER (self));
+	  
       if (!gst_omx_video_dec_fill_buffer (self, buf, outbuf)) {
         gst_buffer_unref (outbuf);
         gst_omx_port_release_buffer (port, buf);
@@ -1671,9 +1685,13 @@ gst_omx_video_dec_loop (GstOMXVideoDec * self)
       frame = NULL;
       buf = NULL;
     } else {
-      if ((flow_ret =
+      /*if ((flow_ret =
               gst_video_decoder_allocate_output_frame_ex (GST_VIDEO_DECODER
-                  (self), frame, buf->omx_buf->pBuffer)) == GST_FLOW_OK) {
+                  (self), frame, buf->omx_buf->pBuffer)) == GST_FLOW_OK) {*/
+      if ((flow_ret =
+              gst_video_decoder_allocate_output_frame (GST_VIDEO_DECODER
+                  (self), frame)) == GST_FLOW_OK) {                  
+                  
         /* FIXME: This currently happens because of a race condition too.
          * We first need to reconfigure the output port and then the input
          * port if both need reconfiguration.
@@ -2727,7 +2745,7 @@ gst_omx_video_dec_decide_allocation (GstVideoDecoder * bdec, GstQuery * query)
   GstBufferPool *pool;
   GstStructure *config;
 
-  printf("\e[31m \nstart:gst_omx_video_dec_decide_allocation\e[0m\n");
+  printf("\e[31m\nstart:gst_omx_video_dec_decide_allocation\e[0m\n");
 
   if (!GST_VIDEO_DECODER_CLASS
       (gst_omx_video_dec_parent_class)->decide_allocation (bdec, query))
@@ -2737,7 +2755,7 @@ gst_omx_video_dec_decide_allocation (GstVideoDecoder * bdec, GstQuery * query)
   gst_query_parse_nth_allocation_pool (query, 0, &pool, NULL, NULL, NULL);
   g_assert (pool != NULL);
 
-  printf("\e[31mgst_omx_video_dec_decide_allocation:%p\e[0m\n", pool);
+  printf("\e[31mend gst_omx_video_dec_decide_allocation:pool=%p\e[0m\n", pool);
 
   config = gst_buffer_pool_get_config (pool);
   if (gst_query_find_allocation_meta (query, GST_VIDEO_META_API_TYPE, NULL)) {
